@@ -17,15 +17,16 @@ export default function EmptyState({
   icon = "/mail.jpg"
 }: EmptyStateProps) {
     // change icon source to either emoji or image path
-    const isImageIcon = typeof icon === "string" && icon.includes(".");
+    // const isImageIcon = typeof icon === "string" && icon.includes(".");
+    const isImageIcon = icon.startsWith("/") || icon.startsWith("http");
 
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
         {isImageIcon ? (
-            <div className="mb-4">
+            <div className="mb-4 relative w-20 h-20">
                 <Image 
-                src={icon} alt={title} width={80} height={80}
-                className="object-contain" />
+                src={icon} alt={title} fill sizes="80px"
+                className="object-contain"  style={{ objectFit: "contain" }}/>
         </div>
         ) : (
             <div className="text-6xl mb-4">{icon}</div>

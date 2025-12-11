@@ -6,72 +6,72 @@ import EmptyState from '@/components/EmptyState';
 import SearchBar from '@/components/SearchBar';
 import { ProjectCardSkeleton, ProjectListSkeleton } from '@/components/LoadingSkeletons';
 import { useRouter } from 'next/navigation';
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { getProjects, getTasks } from "@/lib/firestore";
+import toast from "react-hot-toast";
+
+interface ProjectWithStats {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  dueDate: string;
+  tasksCount: number;
+  completedTasks: number;
+  progress: number;
+}
 
 const page = () => {
   const router = useRouter();
+  const { user } = useAuth();
 
-  // mock project data - will be replaced with real data later
-  const [projects] = useState([
-    {
-    id: 1,
-    name: "Website Redesign",
-    description: "Revamp company website with modern design",
-    tasksCount: 8,
-    completedTasks: 5,
-    progress: 62,
-    color: "bg-blue-500",
-    dueDate: "Dec 15, 2024"
-  },
-    {
-    id: 2,
-    name: "Mobile App Development",
-    description: "Build iOS and Android app",
-    tasksCount: 15,
-    completedTasks: 4,
-    progress: 27,
-    color: "bg-purple-500",
-    dueDate: "Jan 30, 2025"
-  },
-    {
-    id: 3,
-    name: "Marketing Campaign",
-    description: "Q4 social media marketing push",
-    tasksCount: 6,
-    completedTasks: 5,
-    progress: 83,
-    color: "bg-green-500",
-    dueDate: "Dec 1, 2024"
-  },
-    {
-    id: 4,
-    name: "Database Migration",
-    description: "Move from MySQL to PostgreSQL",
-    tasksCount: 10,
-    completedTasks: 2,
-    progress: 20,
-    color: "bg-orange-500",
-    dueDate: "Dec 20, 2024"
-  },
-    {
-    id: 5,
-    name: "Client Onboarding",
-    description: "Onboard new enterprise client",
-    tasksCount: 12,
-    completedTasks: 8,
-    progress: 67,
-    color: "bg-pink-500",
-    dueDate: "Nov 30, 2024"
-  },
-]);
+  const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "progress" | "date">("name");
 
-  // Stimulate loading (later this will be fetching real data)
+  // Load projects from Firestore
   useEffect(() => {
-    setTimeout(() => setIsLoading(false), 1000);
-  }, []);
+    if (!user) return;
+
+    const loadProjects = async () => {
+      try {
+        setIsLoading(true);
+        const projectsData = await getProjects(user.uid);
+
+        // Load tasks for each project to calculate stats
+        const ProjectWithStats = await Promise.all(
+          projectsData.map(async (project) => {
+            const tasks = await getTasks(user.uid, project.id!);
+            const completedTasks = tasks.filter(task => task.status === 'done').length;
+            const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+            return {
+              id: project.id!,
+              name: project.name,
+              description: project.description,
+              color: project.color,
+              dueDate: project.dueDate,
+              tasksCount: tasks.length,
+              completedTasks,
+              progress,
+            };
+          })
+        );
+
+        setProjects(ProjectWithStats);
+      } catch (error) {
+        console.error('Error loading projects:', error);
+        toast.error('Failed to load projects');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, [user]);
 
   // Filter projects based on search
   const filteredProjects = projects.filter(project =>
@@ -93,8 +93,8 @@ const page = () => {
     }
   });
 
-  
   return (
+    <ProtectedRoute>
     <div className='min-h-dvh bg-gray-50 pt-16'>
      {/* Header */}
       <header className='bg-white border-b border-gray-200 sticky top-0 z-10'>
@@ -168,7 +168,7 @@ const page = () => {
             />
           ) : (
             <EmptyState
-              icon="/ff.jpg"
+              icon="/f3.jpg"
               title="No projects yet"
               description="Create your first project to start organizing your tasks and boost your productivity."
               actionLabel="Create Project"
@@ -260,6 +260,7 @@ const page = () => {
        )}
       </main>
     </div>
+    </ProtectedRoute>
   );
 }
 

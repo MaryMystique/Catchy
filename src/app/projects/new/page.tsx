@@ -6,10 +6,15 @@ import { FaArrowLeft } from "react-icons/fa";
 import { HiLightBulb } from "react-icons/hi";
 import toast from 'react-hot-toast';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
+import { createProject } from '@/lib/firestore';
 
 const page = () => {
     const router = useRouter();
-    const [formData, setForData] = useState({
+    const { user } = useAuth();
+
+    const [formData, setFormData] = useState({
         name: "",
         description: "",
         color: "bg-blue-500",
@@ -20,6 +25,8 @@ const page = () => {
         name: "",
         dueDate: ""
     });
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const colorOptions = [
         { name: "Blue", value: "bg-blue-500" },
@@ -57,27 +64,49 @@ const page = () => {
         return !newErrors.name && !newErrors.dueDate;
     }
     
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!validateForm()) {
             toast.error("Please fix the errors before submitting");
             return;
         }
-        // For just it will redirect to projects page but later, will add actual database creation
-        console.log("Creating project:", formData);
-        toast.success("project created successfully!");
-        router.push("/projects");
+
+        if (!user) {
+            toast.error("You must be logged in to create a project");
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // Save projects to Firestore
+            await createProject(user.uid, {
+                name: formData.name,
+                description: formData.description,
+                color: formData.color,
+                dueDate: formData.dueDate || "No due date",
+            });
+
+            toast.success("Project created successfully!");
+            router.push("/projects");
+        } catch (error) {
+           console.error("Error creating project:", error);
+           toast.error("Failed to create project. Please try again."); 
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setForData({
+        setFormData({
             ...formData,
             [e.target.name]: e.target.value
         });
     };
 
   return (
+    <ProtectedRoute>
     <div className='min-h-dvh bg-gray-50 pt-16'>
      <div className='max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
         {/* Header */}
@@ -103,21 +132,20 @@ const page = () => {
                     <input type='text' id='name' name='name' required value={formData.name} onChange={(e) => { handleChange(e);
                         // clear error when user types
                         if (errors.name) setErrors({ ...errors, name: "" });
-                    }}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.name ? "border-red-500" : "border-gray-300"}`} 
+                    }} disabled={isSubmitting} 
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.name ? "border-red-500" : "border-gray-300"} ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} 
                     placeholder='e.g., Website Redesign' />
                     {errors.name && (
                         <p className='text-red-500 text-sm mt-1'>{errors.name}</p>
                     )}
                 </div>
                
-
                 {/* Project Description */}
                 <div>
                     <label htmlFor='description' className='block text-sm font-semibold text-gray-900 mb-2'>
                         Description
                     </label>
-                    <textarea id='description' name='description' value={formData.description} onChange={handleChange} rows={4}  className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none' placeholder='What is the project about?' />
+                    <textarea id='description' name='description' value={formData.description} onChange={handleChange} disabled={isSubmitting} rows={4}  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='What is the project about?' />
                     <p className='text-xs text-gray-500 mt-1'>Optional: Add a brief description of your project</p>
                 </div>
                 {/* Project Color */}
@@ -129,10 +157,11 @@ const page = () => {
                         {colorOptions.map((color) => (
                             <button key={color.value}
                             type='button'
-                            onClick={() => setForData({ ...formData, color: color.value})}
+                            onClick={() => setFormData({ ...formData, color: color.value})}
+                            disabled={isSubmitting}
                             className={`w-full aspect-square rounded-lg ${color.value} hover:scale-110 transition ${ formData.color === color.value
                                 ? "ring-4 ring-gray-900 ring-offset-2" : "ring-2 ring-gray-200"
-                            }`}
+                            } ${isSubmitting ? "cursor-not-allowed opacity-50" : ''}`}
                             title={color.name} />
                         ))}
                     </div>
@@ -146,8 +175,8 @@ const page = () => {
                     <input type='date' id='dueDate' name='dueDate' value={formData.dueDate} onChange={(e) => { handleChange(e);
                         // clear error when user types
                         if (errors.dueDate) setErrors({ ...errors, dueDate: "" });
-                    }}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.dueDate ? "border-red-500" : "border-gray-300"}`} 
+                    }} disabled={isSubmitting}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.dueDate ? "border-red-500" : "border-gray-300"} ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} 
                     />
                     {errors.dueDate && (
                         <p className='text-red-500 text-sm mt-1'>{errors.dueDate}</p>
@@ -157,10 +186,10 @@ const page = () => {
 
                 {/* Action Buttons */}
                 <div className='flex gap-4 pt-4'>
-                    <button type='submit' className='flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition shadow-md hover:shadow-lg'>
-                        Create Project
+                    <button type='submit' disabled={isSubmitting} className={`flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg ${isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}>
+                     {isSubmitting ? "Creating..." : 'Create Project'}
                     </button>
-                    <Link href="/projects" className='flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition text-center'>
+                    <Link href="/projects" className={`flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition text-center ${isSubmitting ? "pointer-events-none opacity-50" : ''}`}>
                     Cancel
                     </Link>
                 </div>
@@ -185,6 +214,7 @@ const page = () => {
 
      </div>
     </div>
+    </ProtectedRoute>
   )
 }
 

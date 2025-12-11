@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { IoMdArrowRoundForward } from "react-icons/io";
@@ -9,37 +9,36 @@ import TaskModal from '@/components/TaskModal';
 import TaskDetailModal from '@/components/TaskDetailModal';
 import { TbFilters } from "react-icons/tb";
 import Breadcrumbs from '@/components/Breadcrumbs';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
+import { getProject, getTasks } from '@/lib/firestore';
+import { TaskCardSkeleton } from '@/components/LoadingSkeletons';
+import EmptyState from '@/components/EmptyState';
+import toast from 'react-hot-toast';
 
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  priority: 'low' | 'medium' |'high';
+  dueDate: string;
+  status: 'todo' | 'inProgress' | 'done';
+}
 
-const page = () => {
+const Page = () => {
     const params = useParams();
-    const projectId = params.id;
+    const projectId = params.id as string;
+    const { user } = useAuth();
 
-    const project = {
-    id: projectId,
-    name: "Website Redesign",
-    description: "Revamp company website with modern design and improved UX",
-    color: "bg-blue-500",
-    dueDate: "Dec 15, 2024",
-    progress: 62
-  };
-
-  // Mock tasks data organized by status
-  const [tasks] = useState({
-    todo: [
-      { id: 1, title: "Design homepage mockup", priority: "high", dueDate: "Nov 28" },
-      { id: 2, title: "Create color palette", priority: "medium", dueDate: "Nov 29" },
-      { id: 3, title: "Review competitor sites", priority: "low", dueDate: "Nov 30" },
-    ],
-    inProgress: [
-      { id: 4, title: "Build navigation component", priority: "high", dueDate: "Nov 27" },
-      { id: 5, title: "Set up project structure", priority: "medium", dueDate: "Nov 28" },
-    ],
-    done: [
-      { id: 6, title: "Project kickoff meeting", priority: "high", dueDate: "Nov 25" },
-      { id: 7, title: "Gather requirements", priority: "medium", dueDate: "Nov 26" },
-      { id: 8, title: "Create project timeline", priority: "low", dueDate: "Nov 26" },
-    ]
+    const [project, setProject] = useState<any>(null);
+    const [tasks, setTasks] = useState<{
+    todo: Task[];
+    inProgress: Task[];
+    done: Task[]
+  }>({
+    todo: [],
+    inProgress: [],
+    done: []
   });
 
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
@@ -47,10 +46,48 @@ const page = () => {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  
+  const [isLoading, setIsLoading] = useState(true);
 
+  //Load project and tasks
+  const loadProjectData = async () => {
+    if (!user || !projectId) return;
+
+    try {
+      setIsLoading(true);
+     
+      // Load project
+      const projectData = await getProject(user.uid, projectId);
+      if (!projectData) {
+        toast.error("Project not found");
+        return;
+      }
+      setProject(projectData);
+
+      // Load tasks
+      const tasksData = await getTasks(user.uid, projectId);
+     
+      // Organize tasks by status
+      const organizedTasks = {
+        todo: tasksData.filter(task => task.status === 'todo'),
+        inProgress: tasksData.filter(task => task.status === 'inProgress'),
+        done: tasksData.filter(task => task.status === 'done')
+      };
+     
+      setTasks(organizedTasks);
+    } catch (error) {
+      console.error('Error loading project:', error);
+      toast.error('Failed to load project data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProjectData();
+  }, [user, projectId])
+  
   // Filter tasks based on selected filters
-  const filterTasks = (taskList: any[]) => {
+  const filterTasks = (taskList: Task[]) => {
     return taskList.filter(task => {
       const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
       return matchesPriority;
@@ -62,10 +99,10 @@ const page = () => {
     done: filterTasks(tasks.done)
   };
 
-  const handleTaskClick = (task: any, status: string) => {
+  const handleTaskClick = (task: Task, status: string) => {
     setSelectedTask({ ...task, status});
     setIsDetailModalOpen(true);
-  }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch(priority) {
@@ -76,7 +113,31 @@ const page = () => {
     }
   };
 
+  // Calculate progress
+  const totalTasks = tasks.todo.length + tasks.inProgress.length + tasks.done.length;
+  const progress = totalTasks > 0 ? Math.round((tasks.done.length / totalTasks) * 100) : 0;
+
+  if (isLoading || !project) {
+    return (
+      <ProtectedRoute>
+        <div className='min-h-dvh bg-gray-50 pt-16'>
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+            <div className='animate-pulse space-y-4'>
+              <div className='h-8 bg-gray-200 rounded w-1/3'></div>
+              <div className='h-24 bg-gray-200 rounded'></div>
+              <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+                {[1, 2, 3].map(i => (
+                  <div key={i} className='bg-gray-200 rounded-xl h-64'></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </ProtectedRoute>
+    )
+  }
   return (
+    <ProtectedRoute>
     <div className='min-h-dvh bg-gray-50 pt-16'>
      {/* Project Header */}
      <header className='bg-white border-b border-gray-200'>
@@ -88,19 +149,6 @@ const page = () => {
             { label: project.name }
            ]}
            />
-         {/* <div className='flex items-center gap-2 text-sm text-gray-600 mb-4'>
-          <Link href="/dashboard" className='hover:text-blue-600 transition'>
-           <div className='inline-flex items-center gap-3'>
-            <FaHome className="text-gray-800 text-2xl"/> 
-            <p> Home</p>
-            </div>
-          </Link>
-          <span> < IoMdArrowRoundForward/> </span>
-          <Link href="/projects" className='hover:text-blue-600 transition'>
-          Projects</Link>
-          <span> < IoMdArrowRoundForward/> </span>
-          <span className='text-gray-900 font-medium'>{project.name}</span>
-         </div> */}
          
          <div className='flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4'>
           {/* Project Info */}
@@ -123,9 +171,7 @@ const page = () => {
           </div>
           <div>
             <span className='text-gray-600'>Tasks:</span>
-            <span className='font-medium text-gray-900'>
-              {tasks.todo.length + tasks.inProgress.length + tasks.done.length}
-            </span>
+            <span className='font-medium text-gray-900'>{totalTasks}</span>
           </div>
          </div>
         {/* Filters */}
@@ -135,18 +181,16 @@ const page = () => {
           <select
            value={priorityFilter}
            onChange={(e) => setPriorityFilter(e.target.value)}
-           className='px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none'>
+           className='px-3 py-1.5 text-sm border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none'>
             <option value="all">All Priorities</option>
             <option value="high">High Priority</option>
             <option value="medium">Medium Priority</option>
             <option value="low">Low Priority</option>
            </select>
            {/* Clear Filters */}
-           {(priorityFilter ! === "all") && (
+           {(priorityFilter ! == "all") && (
             <button 
-              onClick={() => {
-                setPriorityFilter("all");
-              }}
+              onClick={() => setPriorityFilter("all")}
               className='text-sm text-blue-600 hover:text-blue-700 font-medium'>
                 Clear filters
               </button>
@@ -189,11 +233,17 @@ const page = () => {
               <h3 className='font-semibold text-gray-900'>
                 To Do <span className='text-gray-500 text-sm ml-1'>({filteredTasks.todo.length})</span>
               </h3>
+              </div>
               <button className='text-gray-600 hover:text-gray-900'>
                 <span className='text-xl'> <FaPlus /> </span>
               </button>
             </div>
 
+            {filteredTasks.todo.length === 0 ? (
+              <div className='text-center py-8 text-gray-500 text-sm'>
+                No tasks in To Do
+              </div>
+            ) : (
             <div className='space-y-3'>
               {filteredTasks.todo.map((task) => (
                 <div key={task.id} onClick={() => handleTaskClick(task, "todo")}
@@ -208,6 +258,7 @@ const page = () => {
                 </div>
               ))}
             </div>
+            )}
           </div>
           {/* In Progress Column */}
           <div className='bg-blue-100 rounded-xl p-4'>
@@ -220,6 +271,11 @@ const page = () => {
               </button>
             </div>
 
+           {filteredTasks.inProgress.length === 0 ? (
+            <div className='text-center py-8 text-gray-500 text-sm'>
+              No tasks in progress
+            </div>
+           ) : (
            <div className='space-y-3'>
               {filteredTasks.inProgress.map((task) => (
                 <div key={task.id} onClick={() => handleTaskClick(task, "inProgress")}
@@ -234,6 +290,7 @@ const page = () => {
                 </div>
               ))}
             </div>
+           )}
           </div>
           {/* Done Column */}
           <div className='bg-green-100 rounded-xl p-4'>
@@ -246,11 +303,16 @@ const page = () => {
               </button>
             </div>
 
+           {filteredTasks.done.length === 0 ? (
+            <div className='text-center py-8 text-gray-500 text-sm'>
+              No completed tasks
+            </div>
+           ) : (
            <div className='space-y-3'>
               {filteredTasks.done.map((task) => (
                 <div key={task.id} onClick={() => handleTaskClick(task, "done")}
-                className='bg-white p-4 rounded-lg shadow-sm border border-green-200 hover:shadow-md transition cursor-pointer'>
-                  <h4 className='font-medium text-gray-900 mb-2'>{task.title}</h4>
+                className='bg-white p-4 rounded-lg shadow-sm border border-green-200 hover:shadow-md transition cursor-pointer opacity-75'>
+                  <h4 className='font-medium text-gray-900 mb-2 line-through'>{task.title}</h4>
                   <div className='flex items-center justify-between'>
                     <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
                       {task.priority}
@@ -260,14 +322,22 @@ const page = () => {
                 </div>
               ))}
             </div>
-          </div>
-
+           )}
+          </div> 
           </div> 
       )}
 
       {/* List View */}
       {viewMode === "list" && (
         <div className='bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden'>
+          {totalTasks === 0 ? (
+            <EmptyState
+            icon="/jj.jpg"
+            title='No tasks yet'
+            description='Create your first task to start tracking your work.'
+            />
+          ) : (
+            <>
           {/* Desktop Table Header - Hidden on Mobile*/}
           <div className='hidden md:grid grid-cols-12 gap-4 p-4 border-b border-gray-200 font-semibold text-sm text-gray-600 bg-gray-50'>
             <div className='col-span-5'>Task</div>
@@ -285,7 +355,7 @@ const page = () => {
               else status = "Done";
 
               return (
-                <div key={task.id} onClick={() => handleTaskClick(task, status.toLowerCase().replace(" ", ""))} className={`p-4 hover:bg-gray-50 transition cursor-pointer ${ index ! === filteredTasks.todo.length + filteredTasks.inProgress.length + filteredTasks.done.length - 1
+                <div key={task.id} onClick={() => handleTaskClick(task, status.toLowerCase().replace(" ", ""))} className={`p-4 hover:bg-gray-50 transition cursor-pointer ${ index ! == filteredTasks.todo.length + filteredTasks.inProgress.length + filteredTasks.done.length - 1
                   ? "border-b border-gray-200" : ""
                 }`} >
                   {/* Desktop Layout */}
@@ -309,9 +379,7 @@ const page = () => {
                 </div>
                 {/* Mobile Layout - Stacked Vertically */}
                 <div className='md:hidden space-y-3'>
-                  {/* Task Title */}
                   <h4 className='font-semibold text-gray-900 text-base'>{task.title}</h4>
-                  {/* Status, Priority, Date Row */}
                   <div className='flex flex-wrap gap-2'>
                     <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium ${
                       status === "Done" ? "bg-green-100 text-green-700" : 
@@ -333,6 +401,8 @@ const page = () => {
               );
             })}
           </div>
+          </>
+          )}
         </div>
       )}
      </main>
@@ -341,7 +411,8 @@ const page = () => {
      <TaskModal 
      isOpen={isTaskModalOpen}
      onClose={() => setIsTaskModalOpen(false)}
-     projectId={projectId as string}
+     projectId={projectId}
+     onTaskCreated={loadProjectData} //Refresh tasks after creating
      />
 
      {/* Task Detail Modal */}
@@ -351,7 +422,8 @@ const page = () => {
      task={selectedTask}
      />
     </div>
+    </ProtectedRoute>
   )
 }
 
-export default page
+export default Page;

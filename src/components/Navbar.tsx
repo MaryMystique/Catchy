@@ -5,14 +5,16 @@ import Image from 'next/image';
 import {  usePathname } from 'next/navigation';
 import { FaBell } from "react-icons/fa";
 import { FaUser } from "react-icons/fa6";
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Navbar () {
     const [open, setOpen] = useState(false);
     const pathname = usePathname();
+    const { user, logout } = useAuth();
 
     // Simulate authentication - will replace this with real auth later
     // For now, if user is on dashboard or projects page, assume they're "logged in"
-    const isAuthenticated = pathname?.startsWith('/dashboard') || pathname?.startsWith('/projects');
+    const isAuthenticated = !!user;
 
   return (
     <nav className='fixed top-0 left-0 w-full backdrop-blur-lg bg-white/80 border-b border-gray-200 shadow-sm z-50'>
@@ -29,18 +31,18 @@ export default function Navbar () {
         {isAuthenticated ? (
         // Authenicated Navigation
         <div className='hidden md:flex items-center gap-8'>
-            <NavLink href="/dashboard" isActive={pathname === '/dashboard'}>Dashboard</NavLink>
-            
-            <NavLink href="/projects" isActive={pathname === '/projects'}>Projects </NavLink> 
+            <NavLink href="/dashboard" isActive={pathname === '/dashboard'}>Dashboard</NavLink>  
+            <NavLink href="/projects" isActive={pathname === '/projects' || pathname?.startsWith('/projects')}>Projects </NavLink> 
+
             {/* User Menu */}
             <div className='flex items-center gap-4'>
              <button className='text-gray-600 hover:text-gray-900 transition'>
                 <span className='text-2xl'> <FaBell /> </span>
              </button>
              <div className='flex items-center gap-3 border-l border-gray-300 pl-4'>
-              <Link href="/profile" className='w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold hover:ring-2 hover:ring-blue-300 transition'> <FaUser /> 
+              <Link href="/profile" className='w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold hover:ring-2 hover:ring-blue-300 transition'> {user?.displayName?.charAt(0).toUpperCase() || <FaUser /> }
               </Link>
-              <Link href="/login" className='text-sm text-gray-600 hover:text-gray-900 transition font-medium'>Logout</Link>
+              <button onClick={logout} className='text-sm text-gray-600 hover:text-gray-900 transition font-medium'>Logout</button>
              </div>
             </div>
           </div>
@@ -74,15 +76,15 @@ export default function Navbar () {
             <div className='pt-4 border-t border-gray-200'>
             <div className='flex items-center gap-3 mb-4'>
               <Link href="/profile" className='w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold'>
-                <FaUser />
+              {user?.displayName?.charAt(0).toUpperCase() ||  <FaUser />}
               </Link>
               <Link href="/profile" className='text-gray-900 font-medium hover:text-blue-600 transition'>
-              User Account
+             {user?.displayName || 'User Account'}
               </Link>
             </div>
-            <Link href="/login" className='block text-gray-600 hover:text-gray-900 transition font-medium'>
+            <button onClick={logout} className='block w-full text-left text-gray-600 hover:text-gray-900 transition font-medium'>
             Logout
-            </Link>
+            </button>
             </div>
             </>
             ) : (
@@ -106,7 +108,7 @@ function NavLink({ href, children, isActive = false}: { href: string; children: 
         className={`relative transition font-medium after:absolute after:left-0 after:bottom-[-3px] after:h-0.5 after:w-0 after:bg-blue-600 after:transition-all after:duration-300 hover:after:w-full ${ 
             isActive
              ?"text-blue-600 after:w-full"
-              : "text-graay-500 hover:text-blue-600"
+              : "text-gray-500 hover:text-blue-600"
              }`}>
                  {children} </Link>
     );

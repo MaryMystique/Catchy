@@ -1,14 +1,19 @@
 "use client";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { createTask } from "@/lib/firestore";
 
 interface TaskModalProps {
     isOpen: boolean;
     onClose: () => void;
     projectId: string;
     status?: "todo" | "inProgress" | "done";
+    onTaskCreated?: () => void; // callback to refresh tasks
 }
-export default function TaskModal({ isOpen, onClose, projectId, status = "todo" }: TaskModalProps) {
+export default function TaskModal({ isOpen, onClose, projectId, status = "todo", onTaskCreated }: TaskModalProps) {
+  const { user } = useAuth();
+
     const [formData, setFormData] = useState({
         title: "",
         description: "",
@@ -20,6 +25,8 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
     const [errors, setErrors] = useState({
       title: ""
     });
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
    if (!isOpen) return null;
 
@@ -35,27 +42,57 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
           return !newErrors.title;
         };
 
-   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateForm()) {
       toast.error("Please fix the errors before submitting");
       return;
     }
-//   For now, just log and close.. we'll add actual db creation later
-   console.log("Creating task:", formData);
-   toast.success("Task created successfully!");
-   onClose();
-//    Reset form
-   setFormData({
-      title: "",
-      description: "",
-      priority: "medium",
-      dueDate: "",
-      status: status
-   });
-   setErrors({ title: "" });
-    };
+
+    if (!user) {
+      toast.error("You must be logged in to create a task");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Save task to Firestore
+      await createTask(user.uid, projectId, {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority as 'low' | 'medium' | 'high',
+        dueDate: formData.dueDate || "No due date",
+        status: formData.status as 'todo' | 'inProgress' | 'done',
+      });
+
+      toast.success("Task created successfully!");
+     
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        priority: "medium",
+        dueDate: "",
+        status: status
+      });
+      setErrors({ title: "" });
+     
+      // Call callback to refresh tasks
+      if (onTaskCreated) {
+        onTaskCreated();
+      }
+     
+      onClose();
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error("Failed to create task. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData({
             ...formData,
@@ -70,8 +107,8 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900">Create New Task</h2>
           <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
+            onClick={onClose} disabled={isSubmitting}
+            className="text-gray-400 hover:text-gray-600 transition disabled:cursor-not-allowed"
           >
             <span className="text-2xl">×</span>
           </button>
@@ -92,8 +129,8 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
               onChange={(e) => {
                 handleChange(e);
               if (errors.title) setErrors({ title: "" });
-            }}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.title ? "border-red-500" : "border-gray-300" }`}
+            }} disabled={isSubmitting}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.title ? "border-red-500" : "border-gray-300"} ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`}
               placeholder="e.g., Design homepage layout"
               autoFocus
             />
@@ -111,8 +148,9 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
               name="description"
               value={formData.description}
               onChange={handleChange}
+              disabled={isSubmitting}
               rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none"
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`}
               placeholder="Add more details about this task..."
             />
           </div>
@@ -129,7 +167,8 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
                 required
                 value={formData.priority}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={isSubmitting}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`}
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -147,7 +186,8 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
                 name="dueDate"
                 value={formData.dueDate}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={isSubmitting}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`}
               />
             </div>
           </div>
@@ -162,7 +202,8 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
               required
               value={formData.status}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              disabled={isSubmitting}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`}
             >
               <option value="todo">To Do</option>
               <option value="inProgress">In Progress</option>
@@ -173,14 +214,16 @@ export default function TaskModal({ isOpen, onClose, projectId, status = "todo" 
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition shadow-md"
+              disabled={isSubmitting}
+              className={`flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold transition shadow-md ${isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
             >
-              Create Task
+              {isSubmitting ? 'Creating...' : 'Create Task'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition"
+              disabled={isSubmitting}
+              className={`flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold transition ${isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-200"}`}
             >
               Cancel
             </button>

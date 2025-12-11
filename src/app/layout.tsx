@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ToastProvider from "@/components/ToastProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -24,10 +25,12 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${raleway.className} antialiased`} >
+          <AuthProvider>
           <Navbar />
         {children}
         <ToastProvider />
         <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
