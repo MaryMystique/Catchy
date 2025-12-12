@@ -97,7 +97,7 @@ export default function LoginPage () {
                     <label htmlFor='password' className='block text-sm font-medium text-gray-700 mb-2'>
                         Password
                     </label>
-                    <input type='password' id='password' name='password' required value={formData.password} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.password ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='........' />
+                    <input type='password' id='password' name='password' required value={formData.password} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.password ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='........' />
                     {errors.password && (
                       <p className='text-red-500 text-sm mt-1'>{errors.password}</p>
                     )}

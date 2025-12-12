@@ -133,7 +133,7 @@ const page = () => {
                         // clear error when user types
                         if (errors.name) setErrors({ ...errors, name: "" });
                     }} disabled={isSubmitting} 
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.name ? "border-red-500" : "border-gray-300"} ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} 
+                    className={`w-full px-4 py-3 text-gray-900 text-bold border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.name ? "border-red-500" : "border-gray-300"} ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} 
                     placeholder='e.g., Website Redesign' />
                     {errors.name && (
                         <p className='text-red-500 text-sm mt-1'>{errors.name}</p>
@@ -145,7 +145,7 @@ const page = () => {
                     <label htmlFor='description' className='block text-sm font-semibold text-gray-900 mb-2'>
                         Description
                     </label>
-                    <textarea id='description' name='description' value={formData.description} onChange={handleChange} disabled={isSubmitting} rows={4}  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='What is the project about?' />
+                    <textarea id='description' name='description' value={formData.description} onChange={handleChange} disabled={isSubmitting} rows={4}  className={`w-full px-4 py-3 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='What is the project about?' />
                     <p className='text-xs text-gray-500 mt-1'>Optional: Add a brief description of your project</p>
                 </div>
                 {/* Project Color */}
@@ -176,7 +176,7 @@ const page = () => {
                         // clear error when user types
                         if (errors.dueDate) setErrors({ ...errors, dueDate: "" });
                     }} disabled={isSubmitting}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.dueDate ? "border-red-500" : "border-gray-300"} ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} 
+                    className={`w-full px-4 py-3 text-gray-900 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${errors.dueDate ? "border-red-500" : "border-gray-300"} ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : ''}`} 
                     />
                     {errors.dueDate && (
                         <p className='text-red-500 text-sm mt-1'>{errors.dueDate}</p>

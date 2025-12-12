@@ -226,7 +226,7 @@ const Page = () => {
                   <select
                     value={priorityFilter}
                     onChange={(e) => setPriorityFilter(e.target.value)}
-                    className='px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none'
+                    className='px-3 py-1.5 text-sm border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none'
                   >
                     <option value="all">All Priorities</option>
                     <option value="high">High Priority</option>
@@ -326,7 +326,7 @@ const Page = () => {
               </div>
 
               {/* In Progress Column */}
-              <div className='bg-blue-50 rounded-xl p-4'>
+              <div className='bg-blue-100 rounded-xl p-4'>
                 <div className='flex items-center justify-between mb-4'>
                   <h3 className='font-semibold text-gray-900'>
                     In Progress <span className='text-gray-500 text-sm ml-1'>({filteredTasks.inProgress.length})</span>
@@ -365,7 +365,7 @@ const Page = () => {
               </div>
 
               {/* Done Column */}
-              <div className='bg-green-50 rounded-xl p-4'>
+              <div className='bg-green-100 rounded-xl p-4'>
                 <div className='flex items-center justify-between mb-4'>
                   <h3 className='font-semibold text-gray-900'>
                     Done <span className='text-gray-500 text-sm ml-1'>({filteredTasks.done.length})</span>
