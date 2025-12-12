@@ -25,12 +25,20 @@ interface Task {
   status: 'todo' | 'inProgress' | 'done';
 }
 
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  dueDate: string;
+}
+
 const Page = () => {
     const params = useParams();
     const projectId = params.id as string;
     const { user } = useAuth();
 
-    const [project, setProject] = useState<any>(null);
+    const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<{
     todo: Task[];
     inProgress: Task[];
@@ -43,7 +51,7 @@ const Page = () => {
 
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -61,16 +69,16 @@ const Page = () => {
         toast.error("Project not found");
         return;
       }
-      setProject(projectData);
+      setProject(projectData as Project);
 
       // Load tasks
       const tasksData = await getTasks(user.uid, projectId);
      
       // Organize tasks by status
       const organizedTasks = {
-        todo: tasksData.filter(task => task.status === 'todo'),
-        inProgress: tasksData.filter(task => task.status === 'inProgress'),
-        done: tasksData.filter(task => task.status === 'done')
+        todo: tasksData.filter((task: any) => task.status === 'todo') as Task[],
+        inProgress: tasksData.filter((task: any) => task.status === 'inProgress') as Task[],
+        done: tasksData.filter((task: any) => task.status === 'done') as Task[]
       };
      
       setTasks(organizedTasks);
@@ -100,7 +108,7 @@ const Page = () => {
   };
 
   const handleTaskClick = (task: Task, status: string) => {
-    setSelectedTask({ ...task, status});
+    setSelectedTask({ ...task, status: status as 'todo' | 'inProgress' | 'done'});
     setIsDetailModalOpen(true);
   };
 
@@ -167,7 +175,7 @@ const Page = () => {
               </div>
             <div>
               <span className='text-gray-600'>Progress:</span>
-              <span className='font-medium text-gray-900'>{project.progress}%</span>
+              <span className='font-medium text-gray-900'>{progress}%</span>
           </div>
           <div>
             <span className='text-gray-600'>Tasks:</span>
@@ -188,13 +196,15 @@ const Page = () => {
             <option value="low">Low Priority</option>
            </select>
            {/* Clear Filters */}
-           {(priorityFilter ! == "all") && (
-            <button 
-              onClick={() => setPriorityFilter("all")}
-              className='text-sm text-blue-600 hover:text-blue-700 font-medium'>
-                Clear filters
-              </button>
-           )}
+         {priorityFilter !== "all" && (
+  <button 
+    onClick={() => setPriorityFilter("all")}
+    className='text-sm text-blue-600 hover:text-blue-700 font-medium'
+  >
+    Clear filters
+  </button>
+)}
+
            </div>
         </div>
 
@@ -224,20 +234,35 @@ const Page = () => {
      </header>
 
      <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+
       {/* Board View */}
       {viewMode === "board"  &&  (
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           {/* To Do Column */}
           <div className='bg-gray-100 rounded-xl p-4'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='font-semibold text-gray-900'>
-                To Do <span className='text-gray-500 text-sm ml-1'>({filteredTasks.todo.length})</span>
-              </h3>
-              </div>
-              <button className='text-gray-600 hover:text-gray-900'>
-                <span className='text-xl'> <FaPlus /> </span>
-              </button>
-            </div>
+  <div className='flex items-center justify-between mb-4'>
+    <h3 className='font-semibold text-gray-900'>
+      To Do <span className='text-gray-500 text-sm ml-1'>({filteredTasks.todo.length})</span>
+    </h3>
+
+    <button className='text-gray-600 hover:text-gray-900'>
+      <span className='text-xl'><FaPlus /></span>
+    </button>
+  </div>
+
+  {filteredTasks.todo.length === 0 ? (
+    <div className='text-center py-8 text-gray-500 text-sm'>
+      No tasks in To Do
+    </div>
+  ) : (
+    <div className='space-y-3'>
+      {filteredTasks.todo.map((task) => (
+        ...
+      ))}
+    </div>
+  )}
+</div>
+
 
             {filteredTasks.todo.length === 0 ? (
               <div className='text-center py-8 text-gray-500 text-sm'>
@@ -260,6 +285,7 @@ const Page = () => {
             </div>
             )}
           </div>
+
           {/* In Progress Column */}
           <div className='bg-blue-100 rounded-xl p-4'>
             <div className='flex items-center justify-between mb-4'>
@@ -324,7 +350,8 @@ const Page = () => {
             </div>
            )}
           </div> 
-          </div> 
+
+       </div> 
       )}
 
       {/* List View */}
@@ -355,7 +382,7 @@ const Page = () => {
               else status = "Done";
 
               return (
-                <div key={task.id} onClick={() => handleTaskClick(task, status.toLowerCase().replace(" ", ""))} className={`p-4 hover:bg-gray-50 transition cursor-pointer ${ index ! == filteredTasks.todo.length + filteredTasks.inProgress.length + filteredTasks.done.length - 1
+                <div key={task.id} onClick={() => handleTaskClick(task, status.toLowerCase().replace(" ", ""))} className={`p-4 hover:bg-gray-50 transition cursor-pointer ${ index !== filteredTasks.todo.length + filteredTasks.inProgress.length + filteredTasks.done.length - 1
                   ? "border-b border-gray-200" : ""
                 }`} >
                   {/* Desktop Layout */}
@@ -405,7 +432,8 @@ const Page = () => {
           )}
         </div>
       )}
-     </main>
+
+    </main>
 
      {/* Task Creation Modal */}
      <TaskModal 
@@ -423,7 +451,7 @@ const Page = () => {
      />
     </div>
     </ProtectedRoute>
-  )
+  );
 }
 
 export default Page;
