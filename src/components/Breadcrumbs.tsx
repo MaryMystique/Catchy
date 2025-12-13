@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FaHome } from "react-icons/fa";
+import { MdDashboard } from "react-icons/md";
 
 interface BreadcrumbItem {
   label: string;
@@ -17,8 +18,8 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
         href="/dashboard"
         className="text-gray-600 hover:text-blue-600 transition">
         <div className='inline-flex items-center gap-3'>
-             <FaHome className="text-gray-800 text-2xl"/> 
-             <p> Home</p>
+             <MdDashboard className="text-gray-800 text-2xl"/> 
+             <p> Dashboard</p>
          </div>
       </Link>
      

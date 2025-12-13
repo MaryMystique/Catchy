@@ -89,7 +89,7 @@ export default function TaskDetailModal({ isOpen, onClose, task }: TaskDetailMod
             <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-                  <span className="text-sm">:memo:</span>
+                  <span className="text-sm"></span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Task created</p>
