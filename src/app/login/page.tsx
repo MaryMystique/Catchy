@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import Image from 'next/image';
-import { FaHome } from "react-icons/fa";
+import { FaHome, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,6 +16,7 @@ export default function LoginPage () {
     password: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const validateForm = () => {
     const newErrors = {
@@ -77,7 +78,7 @@ export default function LoginPage () {
            <span className='text-3xl font-bold text-blue-600'>Catchy</span>
           </Link>
           <h1 className='text-2xl font-bold text-gray-900 mt-4'>Welcome back</h1>
-          <p className='text-gray-600 mt-2'>Sign in to your account to continue to continue</p>
+          <p className='text-gray-600 mt-2'>Sign in to your account to continue</p>
         </div>
         {/* Login Form */}
         <div className='bg-white rounded-xl shadow-lg border border-gray-200 p-8'>
@@ -87,7 +88,7 @@ export default function LoginPage () {
                     <label htmlFor='email' className='block text-sm font-medium text-gray-700 mb-2'>
                         Email Address
                     </label>
-                    <input type='email' id='email' name='email' required value={formData.email} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.email ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='you@example.com' />
+                    <input type='email' id='email' name='email' required value={formData.email} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.email ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='you@example.com' />
                     {errors.email && (
                       <p className='text-red-500 text-sm mt-1'>{errors.email}</p>
                     )}
@@ -97,7 +98,16 @@ export default function LoginPage () {
                     <label htmlFor='password' className='block text-sm font-medium text-gray-700 mb-2'>
                         Password
                     </label>
-                    <input type='password' id='password' name='password' required value={formData.password} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.password ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='........' />
+                    <div className='relative'>
+                    <input type={showPassword ? 'text' : 'password'} 
+                    id='password' name='password' required value={formData.password} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.password ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='........' />
+                    <button 
+                    type='button' 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition' disabled={isLoading}>
+                      {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                      </button>
+                      </div>
                     {errors.password && (
                       <p className='text-red-500 text-sm mt-1'>{errors.password}</p>
                     )}

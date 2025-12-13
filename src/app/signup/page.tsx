@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { FaHome } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaHome } from "react-icons/fa";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -20,6 +20,8 @@ export default function SignUpPage() {
     confirmPassword: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validateForm = () => {
     const newErrors = {
@@ -109,7 +111,7 @@ export default function SignUpPage() {
                     <label htmlFor='name' className='block text-sm font-medium text-gray-700 mb-2'>
                         Full Name
                     </label>
-                    <input type='text' id='name' name='name' required value={formData.name} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.name ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='Mary Madu' />
+                    <input type='text' id='name' name='name' required value={formData.name} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.name ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='Mary Madu' />
                     {errors.name && (
                         <p className="text-red-500 text-sm mt-1">{errors.name}</p>
                     )}
@@ -119,7 +121,7 @@ export default function SignUpPage() {
                     <label htmlFor='email' className='block text-sm font-medium text-gray-700 mb-2'>
                         Email Address
                     </label>
-                    <input type='email' id='email' name='email' required value={formData.email} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.email ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='you@example.com' />
+                    <input type='email' id='email' name='email' required value={formData.email} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.email ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='you@example.com' />
                     {errors.email && (
                         <p className="text-red-500 text-sm mt-1">{errors.email}</p>
                     )}
@@ -129,7 +131,16 @@ export default function SignUpPage() {
                     <label htmlFor='password' className='block text-sm font-medium text-gray-700 mb-2'>
                         Password
                     </label>
-                    <input type='password' id='password' name='password' required value={formData.password} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.password ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='........' />
+                    <div className="relative">
+                    <input type={showPassword ? 'text' : 'password'}
+                     id='password' name='password' required value={formData.password} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.password ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='........' />
+                     <button
+                     type="button"
+                     onClick={() => setShowPassword(!showPassword)}
+                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition" disabled={isLoading}>
+                      {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                     </button>
+                     </div>
                     {errors.password && ( 
                         <p className="text-red-500 text-sm mt-1">{errors.password}</p>
                     )}
@@ -140,14 +151,23 @@ export default function SignUpPage() {
                     <label htmlFor='confirmPassword' className='block text-sm font-medium text-gray-700 mb-2'>
                        Confirm Password
                     </label>
-                    <input type='password' id='confirmPassword' name='confirmPassword' required value={formData.confirmPassword} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.confirmPassword ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='........' />
+                    <div className="relative">
+                    <input type={showConfirmPassword ? 'text' : 'password'}
+                     id='confirmPassword' name='confirmPassword' required value={formData.confirmPassword} onChange={handleChange} disabled={isLoading} className={`w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${ errors.confirmPassword ? "border-red-500" : "border-gray-300" } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ''}`} placeholder='........' />
+                     <button
+                     type="button"
+                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition" disabled={isLoading}>
+                      {showConfirmPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                     </button>
+                     </div>
                     {errors.confirmPassword && (
                         <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
                     )}
-                  </div>
+               </div>
                   {/* Submit Button */}
                   <button type='submit' disabled={isLoading} className={`w-full bg-blue-600 text-white py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg ${ isLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}>
-                    {isLoading ? 'Create Account...' : "Create Account"}
+                    {isLoading ? 'Creating Account...' : "Create Account"}
                    </button>
                    </form>
                 {/* Terms Checkbox */}
