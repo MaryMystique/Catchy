@@ -1,16 +1,17 @@
 "use client"
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { IoMdArrowRoundForward } from "react-icons/io";
-import { FaHome, FaPlus, FaRegCalendarAlt } from "react-icons/fa";
+import { FaHome, FaPlus, FaRegCalendarAlt, FaEdit, FaTrash } from "react-icons/fa";
+import { BiEditAlt } from "react-icons/bi";
 import { TbFilters } from "react-icons/tb";
 import TaskModal from '@/components/TaskModal';
 import TaskDetailModal from '@/components/TaskDetailModal';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
-import { getProject, getTasks } from '@/lib/firestore';
+import { getProject, getTasks, updateProject, deleteProject,updateTask } from '@/lib/firestore';
 import { TaskCardSkeleton } from '@/components/LoadingSkeletons';
 import EmptyState from '@/components/EmptyState';
 import toast from 'react-hot-toast';
@@ -43,6 +44,7 @@ interface Project {
 
 const Page = () => {
   const params = useParams();
+  const router = useRouter();
   const projectId = params.id as string;
   const { user } = useAuth();
 
@@ -64,6 +66,19 @@ const Page = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
 
+  // Edit project modal states
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    description: "",
+    color: "",
+    dueDate: ""
+  });
+
+  //Delete confirmation modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Load project and tasks
   const loadProjectData = async () => {
     if (!user || !projectId) return;
@@ -78,6 +93,12 @@ const Page = () => {
         return;
       }
       setProject(projectData as Project);
+      setEditFormData({
+        name: projectData.name,
+        description: projectData.description,
+        color: projectData.color,
+        dueDate: projectData.dueDate
+      });
 
       // Load tasks
       const tasksData = await getTasks(user.uid, projectId);
@@ -101,6 +122,54 @@ const Page = () => {
   useEffect(() => {
     loadProjectData();
   }, [user, projectId]);
+
+  //Handle edit project
+  const handleEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      await updateProject(user.uid, projectId, editFormData);
+      toast.success("Project updated successfully!");
+      setIsEditModalOpen(false);
+      loadProjectData();
+    } catch (error) {
+      console.error("Error updating project:", error);
+      toast.error("Failed to update project");
+    }
+  };
+
+  // Handle delete project
+  const handleDeleteProject = async () => {
+    if (!user) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteProject(user.uid, projectId);
+      toast.success("Project deleted successfully!");
+      router.push('/projects');
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      toast.error("Failed to delete project");
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle mark task as complete
+  const handleToggleTaskComplete = async (task: FirestoreTask) => {
+    if (!user) return;
+
+    const newStatus = task.status === 'done' ? 'todo' : 'done';
+
+    try {
+      await updateTask(user.uid, projectId, task.id, { status: newStatus });
+      toast.success(newStatus === 'done' ? "Task marked as complete!" : "Task marked as incomplete!");
+      loadProjectData();
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast.error("Failed to update task");
+    }
+  };
   
   // Filter tasks based on selected filters
   const filterTasks = (taskList: FirestoreTask[]) => {
@@ -196,6 +265,18 @@ const Page = () => {
                 <div className='flex items-center gap-3 mb-3'>
                   <div className={`w-4 h-4 rounded-full ${project.color}`}></div>
                   <h1 className='text-3xl font-bold text-gray-900'>{project.name}</h1>
+                  <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className='text-gray-500 hover:text-blue-600 transition'
+                  title='Edit project'>
+                    <BiEditAlt size={26} />
+                  </button>
+                  <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className='text-gray-500 hover:text-red-600 transition'
+                  title='Delete project'>
+                    <FaTrash size={16} />
+                  </button>
                 </div>
                 <p className='text-gray-600 mb-4'>{project.description}</p>
 
@@ -309,15 +390,25 @@ const Page = () => {
                     {filteredTasks.todo.map((task) => (
                       <div 
                         key={task.id} 
-                        onClick={() => handleTaskClick(task, "todo")}
-                        className='bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer'
+                        className='bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition group'
                       >
+                        <div className='flex items-start gap-3'>
+                          <input
+                          type='checkbox' checked={false}
+                          onChange={() => handleToggleTaskComplete(task)}
+                          className='mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer' />
+                          <div 
+                          onClick={() => handleTaskClick(task, "todo")}
+                          className='flex-1 cursor-pointer'
+                          >
                         <h4 className='font-medium text-gray-900 mb-2'>{task.title}</h4>
                         <div className='flex items-center justify-between'>
                           <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
                             {task.priority}
                           </span>
                           <span className='text-xs text-gray-500'>{task.dueDate}</span>
+                        </div>
+                        </div>
                         </div>
                       </div>
                     ))}
@@ -348,15 +439,25 @@ const Page = () => {
                     {filteredTasks.inProgress.map((task) => (
                       <div 
                         key={task.id} 
-                        onClick={() => handleTaskClick(task, "inProgress")}
-                        className='bg-white p-4 rounded-lg shadow-sm border border-blue-200 hover:shadow-md transition cursor-pointer'
+                        className='bg-white p-4 rounded-lg shadow-sm border border-blue-200 hover:shadow-md transition group'
                       >
+                        <div className='flex items-start gap-3'>
+                          <input
+                          type='checkbox' checked={false}
+                          onChange={() => handleToggleTaskComplete(task)}
+                          className='mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer' />
+                          <div
+                          onClick={() => handleTaskClick(task, "inProgress")}
+                          className='flex-1 cursor-pointer'
+                          >
                         <h4 className='font-medium text-gray-900 mb-2'>{task.title}</h4>
                         <div className='flex items-center justify-between'>
                           <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
                             {task.priority}
                           </span>
                           <span className='text-xs text-gray-500'>{task.dueDate}</span>
+                        </div>
+                        </div>
                         </div>
                       </div>
                     ))}
@@ -387,15 +488,25 @@ const Page = () => {
                     {filteredTasks.done.map((task) => (
                       <div 
                         key={task.id} 
-                        onClick={() => handleTaskClick(task, "done")}
-                        className='bg-white p-4 rounded-lg shadow-sm border border-green-200 hover:shadow-md transition cursor-pointer opacity-75'
+                        className='bg-white p-4 rounded-lg shadow-sm border border-green-200 hover:shadow-md transition group opacity-75'
                       >
+                        <div className='flex items-start gap-3'>
+                          <input
+                          type='checkbox' checked={true}
+                          onChange={() => handleToggleTaskComplete(task)}
+                          className='mt-1 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer' />
+                          <div
+                          onClick={() => handleTaskClick(task, "done")}
+                          className='flex-1 cursor-pointer'
+                          >
                         <h4 className='font-medium text-gray-900 mb-2 line-through'>{task.title}</h4>
                         <div className='flex items-center justify-between'>
                           <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
                             {task.priority}
                           </span>
                           <span className='text-xs text-gray-500'>{task.dueDate}</span>
+                        </div>
+                        </div>
                         </div>
                       </div>
                     ))}
@@ -418,7 +529,8 @@ const Page = () => {
                 <>
                   {/* Desktop Table Header */}
                   <div className='hidden md:grid grid-cols-12 gap-4 p-4 border-b border-gray-200 font-semibold text-sm text-gray-600 bg-gray-50'>
-                    <div className='col-span-5'>Task</div>
+                    <div className='col-span-1'></div>
+                    <div className='col-span-4'>Task</div>
                     <div className='col-span-2'>Status</div>
                     <div className='col-span-2'>Priority</div>
                     <div className='col-span-3'>Due Date</div>
@@ -432,19 +544,31 @@ const Page = () => {
 
                       return (
                         <div 
-                          key={task.id} 
-                          onClick={() => handleTaskClick(task, status)} 
-                          className={`p-4 hover:bg-gray-50 transition cursor-pointer ${
+                          key={task.id}  
+                          className={`p-4 hover:bg-gray-50 transition  ${
                             index !== array.length - 1 ? "border-b border-gray-200" : ""
                           }`}
                         >
                           {/* Desktop Layout */}
                           <div className='hidden md:grid grid-cols-12 gap-4 items-center'>
-                            <div className='col-span-5 font-medium text-gray-900'>{task.title}</div>
+                            <div className='col-span-1'>
+                              <input
+                                type='checkbox'
+                                checked={status === 'done'}
+                                onChange={() => handleToggleTaskComplete(task)}
+                                className='w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer'
+                              />
+                            </div>
+                            <div
+                              className='col-span-4 font-medium text-gray-900 cursor-pointer'
+                              onClick={() => handleTaskClick(task, status)}
+                            >
+                              {task.title}
+                            </div>
                             <div className='col-span-2'>
                               <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                                status === "done" ? "bg-green-100 text-green-700" : 
-                                status === "inProgress" ? "bg-blue-100 text-blue-700" : 
+                                status === "done" ? "bg-green-100 text-green-700" :
+                                status === "inProgress" ? "bg-blue-100 text-blue-700" :
                                 "bg-gray-100 text-gray-700"
                               }`}>
                                 {statusDisplay}
@@ -460,13 +584,27 @@ const Page = () => {
 
                           {/* Mobile Layout */}
                           <div className='md:hidden space-y-3'>
-                            <h4 className='font-semibold text-gray-900 text-base'>{task.title}</h4>
-                            <div className='flex flex-wrap gap-2'>
+                           <div className='flex items-start gap-3'>
+                              <input
+                                type='checkbox'
+                                checked={status === 'done'}
+                                onChange={() => handleToggleTaskComplete(task)}
+                                className='mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer'
+                              />
+                              <h4
+                                className='font-semibold text-gray-900 text-base cursor-pointer flex-1'
+                                onClick={() => handleTaskClick(task, status)}
+                              >
+                                {task.title}
+                              </h4>
+                            </div>
+                            <div className='flex flex-wrap gap-2 ml-7'>
                               <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
-                                status === "done" ? "bg-green-100 text-green-700" : 
-                                status === "inProgress" ? "bg-blue-100 text-blue-700" : 
+                                status === "done" ? "bg-green-100 text-green-700" :
+                                status === "inProgress" ? "bg-blue-100 text-blue-700" :
                                 "bg-gray-100 text-gray-700"
                               }`}>
+
                                 {statusDisplay}
                               </span>
                               <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border font-medium ${getPriorityColor(task.priority)}`}>
@@ -505,7 +643,98 @@ const Page = () => {
             loadProjectData(); // Refresh data when modal closes
           }}
           task={selectedTask}
+          projectId={projectId}
         />
+
+        {/* Edit Project Modal */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Edit Project</h2>
+              <form onSubmit={handleEditProject} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
+                  <input
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+                  <input
+                    type="date"
+                    value={editFormData.dueDate}
+                    onChange={(e) => setEditFormData({...editFormData, dueDate: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <FaTrash className="text-red-600" size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Delete Project</h2>
+              </div>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete "{project.name}"? This will permanently delete the project and all its tasks. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteProject}
+                  disabled={isDeleting}
+                  className={`flex-1 px-4 py-3 bg-red-600 text-white rounded-lg transition ${
+                    isDeleting ? "opacity-50 cursor-not-allowed" : "hover:bg-red-700"
+                  }`}
+                >
+                  {isDeleting ? "Deleting..." : "Delete Project"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );
