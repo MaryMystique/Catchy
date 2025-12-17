@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FaUser } from "react-icons/fa6";
 import toast from "react-hot-toast";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuth, updateProfile, updateEmail } from "firebase/auth";
+import { useDarkMode } from "@/contexts/DarkModeContext";
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const { darkMode, toggleDarkMode} = useDarkMode();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -241,9 +242,8 @@ if (!user) {
                         <input
                           type="checkbox"
                           name="darkMode"
-                          checked={formData.darkMode}
-                          onChange={handleChange}
-                          disabled={isLoading}
+                          checked={darkMode}
+                          onChange={toggleDarkMode}
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>

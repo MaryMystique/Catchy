@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { FaBell, FaClock, FaExclamationCircle } from "react-icons/fa";
+import Link from "next/link";
 
 interface Notification {
   id: string;
@@ -208,9 +209,11 @@ return (
           {/* Footer */}
           {notifications.length > 0 && (
             <div className="p-3 border-t border-gray-200 text-center">
-              <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <Link
+              href="/notifications"
+               className="text-sm text-blue-600 hover:text-blue-700 font-medium">
                 View all notifications
-              </button>
+              </Link>
             </div>
           )}
         </div>

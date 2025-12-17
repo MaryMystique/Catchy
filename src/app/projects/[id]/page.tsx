@@ -3,27 +3,19 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { IoMdArrowRoundForward } from "react-icons/io";
-import { FaHome, FaPlus, FaRegCalendarAlt, FaEdit, FaTrash } from "react-icons/fa";
+import { FaHome, FaPlus, FaRegCalendarAlt, FaEdit, FaTrash, FaCalendar, FaTh } from "react-icons/fa";
 import { BiEditAlt } from "react-icons/bi";
 import { TbFilters } from "react-icons/tb";
 import TaskModal from '@/components/TaskModal';
 import TaskDetailModal from '@/components/TaskDetailModal';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import TaskColumn from '@/components/TaskColumn';
+import CalendarView from '@/components/CalendarView';
 import { useAuth } from '@/contexts/AuthContext';
-import { getProject, getTasks, updateProject, deleteProject,updateTask } from '@/lib/firestore';
-import { TaskCardSkeleton } from '@/components/LoadingSkeletons';
+import { getProject, getTasks, updateProject, deleteProject, updateTask } from '@/lib/firestore';
 import EmptyState from '@/components/EmptyState';
 import toast from 'react-hot-toast';
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  priority: 'low' | 'medium' | 'high';
-  dueDate: string;
-  status: 'todo' | 'inProgress' | 'done';
-}
 
 interface FirestoreTask {
   id: string;
@@ -59,9 +51,9 @@ const Page = () => {
     done: []
   });
 
-  const [viewMode, setViewMode] = useState<"board" | "list">("board");
+  const [viewMode, setViewMode] = useState<"board" | "list" | "calendar">("board");
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<FirestoreTask | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -155,6 +147,20 @@ const Page = () => {
     }
   };
 
+  // Handle task drop (drag and drop)
+  const handleTaskDrop = async (taskId: string, newStatus: 'todo' | 'inProgress' | 'done') => {
+    if (!user) return;
+
+    try {
+      await updateTask(user.uid, projectId, taskId, { status: newStatus });
+      toast.success("Task moved successfully!");
+      loadProjectData();
+    } catch (error) {
+      console.error("Error moving task:", error);
+      toast.error("Failed to move task");
+    }
+  };
+
   // Handle mark task as complete
   const handleToggleTaskComplete = async (task: FirestoreTask) => {
     if (!user) return;
@@ -185,14 +191,8 @@ const Page = () => {
     done: filterTasks(tasks.done)
   };
 
-  const handleTaskClick = (task: FirestoreTask, status: string) => {
-    // Don't Convert to number - Keep as string! 
-    const taskForModal: Task = {
-      ...task,
-      id: task.id, // keep as string, don't parse to int
-      status: status as 'todo' | 'inProgress' | 'done'
-    };
-    setSelectedTask(taskForModal);
+  const handleTaskClick = (task: FirestoreTask) => {
+    setSelectedTask(task);
     setIsDetailModalOpen(true);
   };
 
@@ -224,6 +224,12 @@ const Page = () => {
   // Calculate progress
   const totalTasks = tasks.todo.length + tasks.inProgress.length + tasks.done.length;
   const progress = totalTasks > 0 ? Math.round((tasks.done.length / totalTasks) * 100) : 0;
+
+  // Get all task for calendar
+  const allTasks = [...filteredTasks.todo, ...filteredTasks.inProgress, ...filteredTasks.done].map(task => ({
+    ...task,
+    projectId
+  }));
 
   if (isLoading || !project) {
     return (
@@ -300,7 +306,6 @@ const Page = () => {
                 <div className='flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-200'>
                   <div className='flex items-center gap-2'>
                     <TbFilters className='text-gray-700' />
-                    <span className='text-sm font-medium text-gray-700'></span>
                   </div>
                   
                   {/* Priority Filter */}
@@ -333,17 +338,17 @@ const Page = () => {
                 <div className='flex bg-gray-100 rounded-lg p-1'>
                   <button 
                     onClick={() => setViewMode("board")}
-                    className={`px-4 py-2 rounded text-sm font-medium transition ${
+                    className={`px-3 py-2 rounded text-sm font-medium transition flex items-center gap-2 ${
                       viewMode === "board"
                         ? "bg-white text-gray-900 shadow-sm"
                         : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
-                    Board
+                   <FaTh /> Board
                   </button>
                   <button 
                     onClick={() => setViewMode("list")}
-                    className={`px-4 py-2 rounded text-sm font-medium transition ${
+                    className={`px-3 py-2 rounded text-sm font-medium transition ${
                       viewMode === "list"
                         ? "bg-white text-gray-900 shadow-sm"
                         : "text-gray-600 hover:text-gray-900"
@@ -364,158 +369,53 @@ const Page = () => {
         </header>
 
         <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
-          {/* Board View */}
+          {/* Board View with Drag & Drop */}
           {viewMode === "board" && (
             <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-              {/* To Do Column */}
-              <div className='bg-gray-100 rounded-xl p-4'>
-                <div className='flex items-center justify-between mb-4'>
-                  <h3 className='font-semibold text-gray-900'>
-                    To Do <span className='text-gray-500 text-sm ml-1'>({filteredTasks.todo.length})</span>
-                  </h3>
-                  <button 
-                    onClick={() => setIsTaskModalOpen(true)}
-                    className='text-gray-600 hover:text-gray-900'
-                  >
-                    <FaPlus className='text-lg' />
-                  </button>
-                </div>
-
-                {filteredTasks.todo.length === 0 ? (
-                  <div className='text-center py-8 text-gray-500 text-sm'>
-                    No tasks in To Do
-                  </div>
-                ) : (
-                  <div className='space-y-3'>
-                    {filteredTasks.todo.map((task) => (
-                      <div 
-                        key={task.id} 
-                        className='bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition group'
-                      >
-                        <div className='flex items-start gap-3'>
-                          <input
-                          type='checkbox' checked={false}
-                          onChange={() => handleToggleTaskComplete(task)}
-                          className='mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer' />
-                          <div 
-                          onClick={() => handleTaskClick(task, "todo")}
-                          className='flex-1 cursor-pointer'
-                          >
-                        <h4 className='font-medium text-gray-900 mb-2'>{task.title}</h4>
-                        <div className='flex items-center justify-between'>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
-                          <span className='text-xs text-gray-500'>{task.dueDate}</span>
-                        </div>
-                        </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* In Progress Column */}
-              <div className='bg-blue-100 rounded-xl p-4'>
-                <div className='flex items-center justify-between mb-4'>
-                  <h3 className='font-semibold text-gray-900'>
-                    In Progress <span className='text-gray-500 text-sm ml-1'>({filteredTasks.inProgress.length})</span>
-                  </h3>
-                  <button 
-                    onClick={() => setIsTaskModalOpen(true)}
-                    className='text-gray-600 hover:text-gray-900'
-                  >
-                    <FaPlus className='text-lg' />
-                  </button>
-                </div>
-
-                {filteredTasks.inProgress.length === 0 ? (
-                  <div className='text-center py-8 text-gray-500 text-sm'>
-                    No tasks in progress
-                  </div>
-                ) : (
-                  <div className='space-y-3'>
-                    {filteredTasks.inProgress.map((task) => (
-                      <div 
-                        key={task.id} 
-                        className='bg-white p-4 rounded-lg shadow-sm border border-blue-200 hover:shadow-md transition group'
-                      >
-                        <div className='flex items-start gap-3'>
-                          <input
-                          type='checkbox' checked={false}
-                          onChange={() => handleToggleTaskComplete(task)}
-                          className='mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer' />
-                          <div
-                          onClick={() => handleTaskClick(task, "inProgress")}
-                          className='flex-1 cursor-pointer'
-                          >
-                        <h4 className='font-medium text-gray-900 mb-2'>{task.title}</h4>
-                        <div className='flex items-center justify-between'>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
-                          <span className='text-xs text-gray-500'>{task.dueDate}</span>
-                        </div>
-                        </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Done Column */}
-              <div className='bg-green-100 rounded-xl p-4'>
-                <div className='flex items-center justify-between mb-4'>
-                  <h3 className='font-semibold text-gray-900'>
-                    Done <span className='text-gray-500 text-sm ml-1'>({filteredTasks.done.length})</span>
-                  </h3>
-                  <button 
-                    onClick={() => setIsTaskModalOpen(true)}
-                    className='text-gray-600 hover:text-gray-900'
-                  >
-                    <FaPlus className='text-lg' />
-                  </button>
-                </div>
-
-                {filteredTasks.done.length === 0 ? (
-                  <div className='text-center py-8 text-gray-500 text-sm'>
-                    No completed tasks
-                  </div>
-                ) : (
-                  <div className='space-y-3'>
-                    {filteredTasks.done.map((task) => (
-                      <div 
-                        key={task.id} 
-                        className='bg-white p-4 rounded-lg shadow-sm border border-green-200 hover:shadow-md transition group opacity-75'
-                      >
-                        <div className='flex items-start gap-3'>
-                          <input
-                          type='checkbox' checked={true}
-                          onChange={() => handleToggleTaskComplete(task)}
-                          className='mt-1 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer' />
-                          <div
-                          onClick={() => handleTaskClick(task, "done")}
-                          className='flex-1 cursor-pointer'
-                          >
-                        <h4 className='font-medium text-gray-900 mb-2 line-through'>{task.title}</h4>
-                        <div className='flex items-center justify-between'>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
-                          <span className='text-xs text-gray-500'>{task.dueDate}</span>
-                        </div>
-                        </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+               <TaskColumn
+                title="To Do"
+                status="todo"
+                tasks={filteredTasks.todo}
+                bgColor="bg-gray-100"
+                borderColor="border-gray-200"
+                onAddTask={() => setIsTaskModalOpen(true)}
+                onTaskClick={handleTaskClick}
+                onTaskDrop={handleTaskDrop}
+                onToggleComplete={handleToggleTaskComplete}
+              />
+              <TaskColumn
+                title="In Progress"
+                status="inProgress"
+                tasks={filteredTasks.inProgress}
+                bgColor="bg-blue-100"
+                borderColor="border-blue-200"
+                onAddTask={() => setIsTaskModalOpen(true)}
+                onTaskClick={handleTaskClick}
+                onTaskDrop={handleTaskDrop}
+                onToggleComplete={handleToggleTaskComplete}
+              />
+              <TaskColumn
+                title="Done"
+                status="done"
+                tasks={filteredTasks.done}
+                bgColor="bg-green-100"
+                borderColor="border-green-200"
+                onAddTask={() => setIsTaskModalOpen(true)}
+                onTaskClick={handleTaskClick}
+                onTaskDrop={handleTaskDrop}
+                onToggleComplete={handleToggleTaskComplete}
+              />
             </div>
           )}
 
+          {/* Calendar View */}
+          {viewMode === "calendar" && (
+            <CalendarView 
+              tasks={allTasks}
+              onTaskClick={handleTaskClick}
+            />
+          )}
+          
           {/* List View */}
           {viewMode === "list" && (
             <div className='bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden'>
@@ -561,7 +461,7 @@ const Page = () => {
                             </div>
                             <div
                               className='col-span-4 font-medium text-gray-900 cursor-pointer'
-                              onClick={() => handleTaskClick(task, status)}
+                              onClick={() => handleTaskClick(task)}
                             >
                               {task.title}
                             </div>
@@ -593,7 +493,7 @@ const Page = () => {
                               />
                               <h4
                                 className='font-semibold text-gray-900 text-base cursor-pointer flex-1'
-                                onClick={() => handleTaskClick(task, status)}
+                                onClick={() => handleTaskClick(task)}
                               >
                                 {task.title}
                               </h4>

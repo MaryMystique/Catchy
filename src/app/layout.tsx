@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Raleway } from "next/font/google";
+import { Raleway } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ToastProvider from "@/components/ToastProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { DarkModeProvider } from "@/contexts/DarkModeContext";
+import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -25,12 +27,15 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${raleway.className} antialiased`} >
+          <DarkModeProvider>
           <AuthProvider>
           <Navbar />
+          <EmailVerificationBanner />
         {children}
         <ToastProvider />
         <Footer />
         </AuthProvider>
+        </DarkModeProvider>
       </body>
     </html>
   );
