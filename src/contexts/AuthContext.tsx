@@ -6,9 +6,10 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  sendEmailVerification
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -19,6 +20,7 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -32,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Sign up function
+  // Sign up function with email verification
   const signup = async (email: string, password: string, name: string) => {
     try {
       // Create user account
@@ -42,15 +44,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update user profile with name
       await updateProfile(user, { displayName: name });
 
+      //Send verifiaction email
+      await sendEmailVerification(user);
+
       // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
         displayName: name,
         createdAt: new Date().toISOString(),
+        emailVerified: false
       });
 
-      toast.success('Account created successfully!');
+      toast.success('Account created! Please check your email to verify your account.');
       router.push('/dashboard');
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -70,8 +76,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login function
   const login = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      // Check if email is verified
+      if (!userCredential.user.emailVerified) {
+        toast.error("Please verify your email before logging in. Check your inbox!", {
+          duration:5000
+        });
+        //Still allow login but show warning
+      } else {
       toast.success('Logged in successfully!');
+      }
+
       router.push('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
@@ -82,6 +98,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast.error('Too many failed attempts. Try again later.');
       } else {
         toast.error('Failed to log in');
+      }
+      throw error;
+    }
+  };
+   
+  // Resend verification email
+  const resendVerificationEmail = async () => {
+    try {
+      if (!user) {
+        toast.error('No user logged in');
+        return;
+      }
+
+      if (user.emailVerified) {
+        toast.success('Your email is already verified!');
+        return;
+      }
+
+      await sendEmailVerification(user);
+      toast.success('Verification email sent! Check your inbox.');
+    } catch (error: any) {
+      console.error('Resend verification error:', error);
+      
+      if (error.code === 'auth/too-many-requests') {
+        toast.error('Too many requests. Please wait a few minutes before trying again.');
+      } else {
+        toast.error('Failed to send verification email');
       }
       throw error;
     }
@@ -116,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signup,
     login,
     logout,
+    resendVerificationEmail,
   };
   
   return (

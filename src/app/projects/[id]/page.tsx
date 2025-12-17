@@ -17,7 +17,7 @@ import EmptyState from '@/components/EmptyState';
 import toast from 'react-hot-toast';
 
 interface Task {
-  id: number;
+  id: string;
   title: string;
   description?: string;
   priority: 'low' | 'medium' | 'high';
@@ -186,10 +186,10 @@ const Page = () => {
   };
 
   const handleTaskClick = (task: FirestoreTask, status: string) => {
-    // Convert FirestoreTask (string id) to Task (number id) for TaskDetailModal
+    // Don't Convert to number - Keep as string! 
     const taskForModal: Task = {
       ...task,
-      id: parseInt(task.id) || 0, // Convert string id to number
+      id: task.id, // keep as string, don't parse to int
       status: status as 'todo' | 'inProgress' | 'done'
     };
     setSelectedTask(taskForModal);

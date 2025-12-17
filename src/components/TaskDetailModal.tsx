@@ -4,10 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { updateTask, deleteTask } from "@/lib/firestore";
 import toast from "react-hot-toast";
 import { FaTrash } from "react-icons/fa";
-
+import TaskComments from "./TaskComments";
+import TaskFileUploader from "./TaskFileUploader";
 
 interface Task {
-  id: number;
+  id: string;
   title: string;
   priority: string;
   dueDate: string;
@@ -33,7 +34,7 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
     description: string;
     priority: "low" | "medium" | "high";
     dueDate: string;
-    status: 'todo' | 'inProgress' | 'done';
+    status: "todo" | "inProgress" | "done";
   }>({
     title: "",
     description: "",
@@ -42,7 +43,7 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
     status: "todo"
   });
 
-  //Load task data into form when task changes
+  // Load task data into form when task changes
   useEffect(() => {
     if (task) {
       setEditFormData({
@@ -50,7 +51,7 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
         description: task.description || "",
         priority: task.priority as "low" | "medium" | "high",
         dueDate: task.dueDate,
-        status: (task.status || "todo") as 'todo' | 'inProgress' | 'done'
+        status: (task.status || "todo") as "todo" | "inProgress" | "done"
       });
     }
   }, [task]);
@@ -65,13 +66,14 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
     }
 
     try {
-      await updateTask(user.uid, projectId, task.id.toString(), editFormData);
+      const taskId = String(task.id);
+      await updateTask(user.uid, projectId, taskId, editFormData);
       toast.success("Task updated successfully!");
       setIsEditing(false);
-      onClose(); // Close modal and refresh parent
-    } catch (error) {
+      onClose();
+    } catch (error: any) {
       console.error("Error updating task:", error);
-      toast.error("Failed to update task");
+      toast.error(error?.message || "Failed to update task");
     }
   };
 
@@ -83,12 +85,14 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
 
     setIsDeleting(true);
     try {
-      await deleteTask(user.uid, projectId, task.id.toString());
+      const taskId = String(task.id);
+      await deleteTask(user.uid, projectId, taskId);
       toast.success("Task deleted successfully!");
-      onClose(); // Close modal and refresh parent
-    } catch (error) {
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (error: any) {
       console.error("Error deleting task:", error);
-      toast.error("Failed to delete task");
+      toast.error(error?.message || "Failed to delete task");
       setIsDeleting(false);
     }
   };
@@ -208,7 +212,7 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>
@@ -221,8 +225,7 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
               </div>
             </form>
           </>
-          ) : (
-       
+        ) : (
           // VIEW MODE
           <>
             <div className="flex items-start justify-between p-6 border-b border-gray-200">
@@ -250,7 +253,7 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Due Date</h3>
                 <div className="flex items-center gap-2 text-gray-900">
-                  <span className="text-lg">:date:</span>
+                  <span className="text-lg">📅</span>
                   <span>{task.dueDate}</span>
                 </div>
               </div>
@@ -278,7 +281,7 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-                      <span className="text-sm">:pencil2:</span>
+                      <span className="text-sm">✏️</span>
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">Priority set to {task.priority}</p>
@@ -287,6 +290,16 @@ export default function TaskDetailModal({ isOpen, onClose, task, projectId }: Ta
                   </div>
                 </div>
               </div>
+
+              {/* File Attachments */}
+              {projectId && (
+                <TaskFileUploader projectId={projectId} taskId={task.id} />
+              )}
+
+              {/* Comments Section */}
+              {projectId && (
+                <TaskComments projectId={projectId} taskId={task.id} />
+              )}
               
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4 border-t border-gray-200">

@@ -1,26 +1,83 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FaUser } from "react-icons/fa6";
 import toast from "react-hot-toast";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAuth, updateProfile, updateEmail } from "firebase/auth";
 
 export default function ProfilePage() {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: "User Name",
-    email: "user@example.com",
-    bio: "Task management enthusiast",
+    name: "",
+    email: "",
+    bio: "",
     notifications: true,
     emailUpdates: false,
     darkMode: false
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  //Load user data when component mounts
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.displayName || "",
+        email: user.email || "",
+      }));
+    }
+  }, [user]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Updating profile:", formData);
-    // Show success message (we'll add a proper toast notification later)
-    toast.success("Profile updated successfully!");
+
+
+if (!user) {
+      toast.error("No user logged in");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        toast.error("Authentication error");
+        setIsLoading(false);
+        return;
+      }
+
+      // Update display name
+      if (formData.name !== user.displayName) {
+        await updateProfile(currentUser, {
+          displayName: formData.name
+        });
+      }
+
+      // Update email if changed
+      if (formData.email !== user.email) {
+        await updateEmail(currentUser, formData.email);
+        toast.success("Email updated! Please verify your new email.");
+      }
+
+      toast.success("Profile updated successfully!");
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+      if (error.code === 'auth/requires-recent-login') {
+        toast.error("Please log out and log back in to update your email.");
+      } else if (error.code === 'auth/email-already-in-use') {
+        toast.error("This email is already in use.");
+      } else {
+        toast.error("Failed to update profile. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -29,6 +86,16 @@ export default function ProfilePage() {
       ...formData,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     });
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user?.displayName) return "U";
+    const names = user.displayName.split(" ");
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+    return user.displayName[0].toUpperCase();
   };
 
   return (
@@ -48,9 +115,9 @@ export default function ProfilePage() {
                 <button className="w-full text-left px-4 py-3 rounded-lg bg-blue-50 text-blue-600 font-medium">
                   Profile Info
                 </button>
-                <button className="w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition">
-                  Password
-                </button>
+                <Link href="/forgot-password" className="block w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                  Change Password
+                </Link>
                 <button className="w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition">
                   Preferences
                 </button>
@@ -65,8 +132,7 @@ export default function ProfilePage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
               {/* Profile Picture Section */}
               <div className="flex items-center gap-6 mb-8 pb-8 border-b border-gray-200">
-                <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                  <FaUser />
+                <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold"> {getUserInitials()}
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Profile Picture</h3>
@@ -89,7 +155,8 @@ export default function ProfilePage() {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    disabled={isLoading}
+                    className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
                 {/* Email */}
@@ -103,9 +170,10 @@ export default function ProfilePage() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    disabled={isLoading}
+                    className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
-                  <p className="text-xs text-gray-500 mt-1">We'll send updates to this email</p>
+                  <p className="text-xs text-gray-500 mt-1">Changing email requires re-login</p>
                 </div>
                 {/* Bio */}
                 <div>
@@ -117,8 +185,9 @@ export default function ProfilePage() {
                     name="bio"
                     value={formData.bio}
                     onChange={handleChange}
+                    disabled={isLoading}
                     rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Tell us about yourself..."
                   />
                 </div>
@@ -138,6 +207,7 @@ export default function ProfilePage() {
                           name="notifications"
                           checked={formData.notifications}
                           onChange={handleChange}
+                          disabled={isLoading}
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -155,6 +225,7 @@ export default function ProfilePage() {
                           name="emailUpdates"
                           checked={formData.emailUpdates}
                           onChange={handleChange}
+                          disabled={isLoading}
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -172,6 +243,7 @@ export default function ProfilePage() {
                           name="darkMode"
                           checked={formData.darkMode}
                           onChange={handleChange}
+                          disabled={isLoading}
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -182,10 +254,10 @@ export default function ProfilePage() {
                 {/* Save Button */}
                 <div className="pt-6">
                   <button
-                    type="submit"
-                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+                    type="submit" disabled={isLoading}
+                    className={`w-full bg-blue-600 text-white py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700" }`}
                   >
-                    Save Changes
+                    {isLoading ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </form>
@@ -193,7 +265,7 @@ export default function ProfilePage() {
           </div>
         </div>
         {/* Danger Zone */}
-        <div className="mt-8 bg-red-100 border border-red-200 rounded-xl p-6">
+        <div className="mt-8 bg-red-50 border border-red-200 rounded-xl p-6">
           <h3 className="font-semibold text-red-900 mb-2">Danger Zone</h3>
           <p className="text-sm text-red-700 mb-4">
             Once you delete your account, there is no going back. Please be certain.
