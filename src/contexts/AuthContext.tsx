@@ -84,19 +84,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-      // Check if email is verified
+      // STRICT RULE: Block login if email is not verified
       if (!userCredential.user.emailVerified) {
+        await signOut(auth); // sign them out immediately
         toast.error("Please verify your email before logging in. Check your inbox!", {
           duration:5000
         });
-        //Still allow login but show warning
-      } else {
-      toast.success('Logged in successfully!');
-      }
+        throw new Error('Email not verified');
+        } 
 
+      toast.success('Logged in successfully!');
       router.push('/dashboard');
-    } catch (error: any) {
+      } catch (error: any) {
       console.error('Login error:', error);
+
+      if (error.message === 'Email not verified') {
+        return; // Already handled above
+      }
 
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         toast.error('Invalid email or password');

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { uploadTaskFile, deleteTaskFile,listTaskFiles, formatFileSize, FileAttachment } from "@/lib/storage";
+import { uploadTaskFile, deleteTaskFile, listTaskFiles, formatFileSize, FileAttachment } from "@/lib/storage";
 import toast from "react-hot-toast";
 import { FaFile, FaDownload, FaTrash, FaUpload, FaFilePdf, FaFileImage, FaFileWord, FaFileExcel } from "react-icons/fa";
 
@@ -42,39 +42,32 @@ export default function TaskFileUploader({ projectId, taskId }: TaskFileUploader
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0 || !user) return;
 
-    setIsUploading(true);
-    const uploadPromises: Promise<void>[] = [];
+    const filesToUpload = Array.from(selectedFiles);
 
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      
+    for (const file of filesToUpload) {
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`${file.name} is too large. Max size is 10MB`);
         continue;
       }
 
-      const uploadPromise = uploadTaskFile(user.uid, projectId, taskId, file)
-        .then(() => {
-          toast.success(`${file.name} uploaded successfully!`);
-        })
-        .catch((error) => {
-          console.error('Upload error:', error);
-          toast.error(`Failed to upload ${file.name}`);
-        });
-
-      uploadPromises.push(uploadPromise);
-    }
+    setIsUploading(true);
 
     try {
-      await Promise.all(uploadPromises);
-      loadFiles(); // Reload files list
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      await uploadTaskFile(user.uid, projectId, taskId, file);
+      toast.success(`${file.name} uploaded successfully!`);
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(`Failed to upload ${file.name}`);
     }
+  }
+   setIsUploading(false);
+   await loadFiles(); // Reload files list
+
+   // Clear input
+   if (fileInputRef.current) {
+    fileInputRef.current.value = '';
+   }
   };
 
   // Handle file delete

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {  usePathname } from 'next/navigation';
-import { FaBell, FaMoon, FaSun } from "react-icons/fa";
+import { FaBell, FaMoon, FaSun, FaSignOutAlt } from "react-icons/fa";
 import { FaUser } from "react-icons/fa6";
 import { useAuth } from '@/contexts/AuthContext';
 import { useDarkMode } from '@/contexts/DarkModeContext';
@@ -12,6 +12,7 @@ import { getTasks, getProjects } from '@/lib/firestore';
 
 export default function Navbar () {
     const [open, setOpen] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const { darkMode, toggleDarkMode } = useDarkMode();
@@ -54,7 +55,16 @@ export default function Navbar () {
     }
   }, [user, isAuthenticated]);
 
+    const handleLogoutClick = () => {
+      setShowLogoutModal(true);
+    };
+    const confirmLogout = async () => {
+      setShowLogoutModal(false);
+      await logout();
+    };
+
   return (
+    <>
     <nav className='fixed top-0 left-0 w-full backdrop-blur-lg bg-white/80 border-b border-gray-200 shadow-sm z-50'>
      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
       <div className='flex justify-between items-center h-16'>
@@ -90,7 +100,7 @@ export default function Navbar () {
                  {user?.displayName?.charAt(0).toUpperCase() || <FaUser /> }
               </Link>
               <button 
-              onClick={logout}
+              onClick={handleLogoutClick}
                className='text-sm text-gray-600 hover:text-gray-900 transition font-medium'>
                 Logout
                 </button>
@@ -170,6 +180,37 @@ export default function Navbar () {
         </div>
      )}
     </nav>
+    {/* Logout Confirmation Modal */}
+    {showLogoutModal && (
+       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+              <FaSignOutAlt className="text-blue-600 dark:text-blue-400" size={20} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Confirm Logout</h3>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Are you sure you want to log out? You'll need to sign in again to access your account.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowLogoutModal(false)}
+              className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmLogout}
+              className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
