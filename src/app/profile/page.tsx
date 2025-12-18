@@ -6,11 +6,15 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuth, updateProfile, updateEmail } from "firebase/auth";
 import { useDarkMode } from "@/contexts/DarkModeContext";
+import { IoWarning } from "react-icons/io5";
+import { FaUser } from "react-icons/fa6";
 
-export default function ProfilePage() {
-  const { user } = useAuth();
+ export default function ProfilePage() {
+  const { user, deleteAccount } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const { darkMode, toggleDarkMode} = useDarkMode();
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'preferences' | 'delete'>('profile');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -36,7 +40,7 @@ export default function ProfilePage() {
     e.preventDefault();
 
 
-if (!user) {
+  if (!user) {
       toast.error("No user logged in");
       return;
     }
@@ -99,6 +103,21 @@ if (!user) {
     return user.displayName[0].toUpperCase();
   };
 
+  const handleDeleteAccount = async () => {
+    if (!confirm('Are you absolutely sure? This action cannot be undone!')) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await deleteAccount();
+    } catch (error) {
+      // Error handled in context
+    } finally {
+      setIsLoading(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   return (
     <ProtectedRoute>
     <div className="min-h-screen bg-gray-50 pt-16">
@@ -113,16 +132,24 @@ if (!user) {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <nav className="space-y-1">
-                <button className="w-full text-left px-4 py-3 rounded-lg bg-blue-50 text-blue-600 font-medium">
+                <button
+                onClick={() => setActiveTab('profile')}
+                 className={`w-full text-left px-4 py-3 rounded-lg font-medium transition ${activeTab === 'profile' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}>
                   Profile Info
                 </button>
-                <Link href="/forgot-password" className="block w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                <Link 
+                href="/forgot-password" 
+                className="block w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium">
                   Change Password
                 </Link>
-                <button className="w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                <button 
+                onClick={() => setActiveTab('preferences')}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition ${activeTab === 'preferences' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50' }`}>
                   Preferences
                 </button>
-                <button className="w-full text-left px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition">
+                <button 
+                onClick={() => setActiveTab('delete')}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition ${activeTab === 'delete' ? 'bg-red-50 text-red-600' : 'text-red-600 hover:bg-red-50' }`}>
                   Delete Account
                 </button>
               </nav>
@@ -130,6 +157,7 @@ if (!user) {
           </div>
           {/* Main Content */}
           <div className="lg:col-span-2">
+            {activeTab === 'profile' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
               {/* Profile Picture Section */}
               <div className="flex items-center gap-6 mb-8 pb-8 border-b border-gray-200">
@@ -260,8 +288,94 @@ if (!user) {
                     {isLoading ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
-              </form>
-            </div>
+                </form>
+                </div>
+                 )}
+           {/* Preferences Tab */}
+          
+            {activeTab === 'preferences' && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Preferences</h2>
+                <div className="space-y-6">
+                  {/* Push Notifications */}
+                  <div className="flex items-center justify-between py-4 border-b border-gray-200">
+                    <div>
+                      <p className="font-medium text-gray-900">Push Notifications</p>
+                      <p className="text-sm text-gray-600">Get notified about task updates</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.notifications}
+                        onChange={(e) => setFormData({...formData, notifications: e.target.checked})}
+                        disabled={isLoading}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  {/* Email Updates */}
+                  <div className="flex items-center justify-between py-4 border-b border-gray-200">
+                    <div>
+                      <p className="font-medium text-gray-900">Email Updates</p>
+                      <p className="text-sm text-gray-600">Receive weekly progress reports</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.emailUpdates}
+                        onChange={(e) => setFormData({...formData, emailUpdates: e.target.checked})}
+                        disabled={isLoading}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <button
+                    onClick={(e) => handleSubmit(e as any)}
+                    disabled={isLoading}
+                    className={`w-full bg-blue-600 text-white py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg ${
+                      isLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"
+                    }`}
+                  >
+                    {isLoading ? "Saving..." : "Save Preferences"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Delete Account Tab */}
+            {activeTab === 'delete' && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <h2 className="text-2xl font-bold text-red-900 mb-6">Delete Account</h2>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+                  <div className='inline-flex items-center gap-3'>
+                  <IoWarning size={30} className="text-red-800" /> 
+                  <h3 className="font-semibold text-gray-800 text-2xl mb-2"> Warning</h3>
+                  </div>
+                  <p className="text-sm text-red-700 mb-4">
+                    Once you delete your account, there is no going back. This will:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-red-700 space-y-1 mb-4">
+                    <li>Permanently delete all your projects</li>
+                    <li>Permanently delete all your tasks</li>
+                    <li>Remove all your data from our servers</li>
+                    <li>This action cannot be undone</li>
+                  </ul>
+                </div>
+                <button 
+                  onClick={handleDeleteAccount}
+                  disabled={isLoading}
+                  className={`w-full bg-red-600 text-white py-3 rounded-lg font-semibold transition ${
+                    isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'
+                  }`}
+                >
+                  {isLoading ? 'Deleting Account...' : 'Delete My Account'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
         {/* Danger Zone */}

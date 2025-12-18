@@ -113,11 +113,12 @@ body {
 }
 
 /* Keep these light in dark mode */
-.dark .text-blue-600
+.dark .text-blue-600,
 .dark .text-blue-700,
 .dark .text-red-600,
 .dark .text-green-600,
-.dark .text-yellow-600 {
+.dark .text-yellow-600
+ {
   /* Keep original colors for semantic meaning */
 }
 

@@ -63,19 +63,22 @@ export default function TaskComments({ projectId, taskId }: TaskCommentsProps) {
     setIsSending(true);
     try {
       const commentsRef = collection(db, 'users', user.uid, 'projects', projectId, 'tasks', taskId, 'comments');
-      await addDoc(commentsRef, {
+      const commentData = {
         text: newComment.trim(),
         userId: user.uid,
         userName: user.displayName || 'Anonymous',
         createdAt: serverTimestamp()
-      });
+      };
+      console.log("Adding comment:", commentData); //debug log
+
+      await addDoc(commentsRef, commentData);
 
       setNewComment("");
       toast.success("Comment added!");
-      loadComments(); // Reload comments
+      await loadComments(); // Reload comments
     } catch (error) {
       console.error('Error adding comment:', error);
-      toast.error("Failed to add comment");
+      toast.error(error?.message || "Failed to add comment");
     } finally {
       setIsSending(false);
     }
@@ -113,7 +116,7 @@ export default function TaskComments({ projectId, taskId }: TaskCommentsProps) {
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Add a comment..."
           disabled={isSending}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100"
+          className="flex-1 px-4 py-2 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100"
         />
         <button
           type="submit"
