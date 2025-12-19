@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, Timestamp, doc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, Timestamp, doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import toast from "react-hot-toast";
-import { FaPaperPlane, FaUser } from "react-icons/fa";
+import { FaPaperPlane, FaUser, FaTrash } from "react-icons/fa";
 
 interface Comment {
     id: string;
@@ -84,6 +84,21 @@ export default function TaskComments({ projectId, taskId }: TaskCommentsProps) {
     }
   };
 
+  // Delete comment
+  const handleDeleteComment = async (commentId: string) => {
+    if (!user || !confirm('Delete this comment?')) return;
+
+    try {
+      const commentRef = doc(db, 'users', user.uid, 'projects', projectId, 'tasks', taskId, 'comments', commentId);
+      await deleteDoc(commentRef);
+      toast.success("Comment deleted!");
+      await loadComments(); // Reload the comments
+    } catch (error: any) {
+      console.error('Error deleting comment:', error);
+      toast.error("Failed to delete comment");
+    }
+  };
+
   // Format timestamp
   const formatTime = (timestamp: any) => {
     if (!timestamp) return 'Just now';
@@ -135,15 +150,24 @@ export default function TaskComments({ projectId, taskId }: TaskCommentsProps) {
           <p className="text-sm text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>
         ) : (
           comments.map((comment) => (
-            <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
+            <div key={comment.id} className="bg-gray-50 rounded-lg p-3 group">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs shrink-0">
                   <FaUser />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
                     <span className="font-medium text-sm text-gray-900">{comment.userName}</span>
                     <span className="text-xs text-gray-500">{formatTime(comment.createdAt)}</span>
+                  </div>
+                  {user && comment.userId === user.uid && (
+                    <button
+                    onClick={() => handleDeleteComment(comment.id)}
+                    className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-700 transition p-1" title="Delete comment">
+                      <FaTrash size={12} />
+                    </button>
+                  )}
                   </div>
                   <p className="text-sm text-gray-700 wrap-break-words">{comment.text}</p>
                 </div>

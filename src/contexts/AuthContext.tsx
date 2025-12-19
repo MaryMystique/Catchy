@@ -46,13 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update user profile with name
       await updateProfile(user, { displayName: name });
 
-      //Send verifiaction email with custom action URL
-      const actionCodeSettings = {
-        url: `${window.location.origin}/dashboard`, // Redirect URL after verification
-        handleCodeInApp: false,
-      };
-      await sendEmailVerification(user, actionCodeSettings);
-
       // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
@@ -62,8 +55,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailVerified: false
       });
 
-      toast.success('Account created! Please check your email to verify your account.');
-      router.push('/dashboard');
+      //Send verifiaction email with custom action URL that goes to email-verified page
+      const actionCodeSettings = {
+        url: `${window.location.origin}/email-verified`,
+        handleCodeInApp: false,
+      };
+      await sendEmailVerification(user, actionCodeSettings);
+
+      //log them out immediately so they must verify email first
+      await signOut(auth);
+      
+      toast.success('Account created! Please check your email to verify your account before logging in.', {
+        duration: 8000
+      });
+      
+      // Redirect to login page with message
+      router.push('/login?verified=pending');
     } catch (error: any) {
       console.error('Signup error:', error);
 

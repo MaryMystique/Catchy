@@ -10,7 +10,6 @@ interface TaskFileUploaderProps {
     taskId: string;
 }
 
-
 export default function TaskFileUploader({ projectId, taskId }: TaskFileUploaderProps) {
   const { user } = useAuth();
   const [files, setFiles] = useState<FileAttachment[]>([]);
@@ -40,25 +39,33 @@ export default function TaskFileUploader({ projectId, taskId }: TaskFileUploader
   // Handle file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
-    if (!selectedFiles || selectedFiles.length === 0 || !user) return;
+    if (!selectedFiles || selectedFiles.length === 0 || !user) {
+      console.log("No files selected or no user");
+      return;
+    }
 
+    console.log("Starting upload for", selectedFiles.length, 'files');
     const filesToUpload = Array.from(selectedFiles);
 
+    setIsUploading(true);
+
     for (const file of filesToUpload) {
+      console.log("Processing file:", file.name, "Size:", file.size);
+      
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`${file.name} is too large. Max size is 10MB`);
         continue;
       }
 
-    setIsUploading(true);
-
     try {
-      await uploadTaskFile(user.uid, projectId, taskId, file);
+      console.log("Uploading", file.name, "...");
+      const result = await uploadTaskFile(user.uid, projectId, taskId, file);
+      console.log("Upload successful:", result);
       toast.success(`${file.name} uploaded successfully!`);
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(`Failed to upload ${file.name}`);
+      toast.error(`Failed to upload ${file.name}: ${error.message || 'Unknown error'}`);
     }
   }
    setIsUploading(false);
