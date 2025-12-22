@@ -7,7 +7,6 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
-  sendEmailVerification,
   deleteUser
 } from 'firebase/auth';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
@@ -21,7 +20,6 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  resendVerificationEmail: () => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
 
@@ -36,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Sign up function with email verification
+  // Sign up function with email 
   const signup = async (email: string, password: string, name: string) => {
     try {
       // Create user account
@@ -52,25 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         displayName: name,
         createdAt: new Date().toISOString(),
-        emailVerified: false
       });
 
-      //Send verifiaction email with custom action URL that goes to email-verified page
-      const actionCodeSettings = {
-        url: `${window.location.origin}/email-verified`,
-        handleCodeInApp: false,
-      };
-      await sendEmailVerification(user, actionCodeSettings);
-
-      //log them out immediately so they must verify email first
-      await signOut(auth);
-      
-      toast.success('Account created! Please check your email to verify your account before logging in.', {
-        duration: 8000
-      });
-      
-      // Redirect to login page with message
-      router.push('/login?verified=pending');
+      toast.success("Account created successfully!");
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Signup error:', error);
 
@@ -89,25 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login function
   const login = async (email: string, password: string) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-
-      // STRICT RULE: Block login if email is not verified
-      if (!userCredential.user.emailVerified) {
-        await signOut(auth); // sign them out immediately
-        toast.error("Please verify your email before logging in. Check your inbox!", {
-          duration:5000
-        });
-        throw new Error('Email not verified');
-        } 
-
+      await signInWithEmailAndPassword(auth, email, password);
       toast.success('Logged in successfully!');
       router.push('/dashboard');
       } catch (error: any) {
       console.error('Login error:', error);
-
-      if (error.message === 'Email not verified') {
-        return; // Already handled above
-      }
 
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         toast.error('Invalid email or password');
@@ -115,33 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast.error('Too many failed attempts. Try again later.');
       } else {
         toast.error('Failed to log in');
-      }
-      throw error;
-    }
-  };
-   
-  // Resend verification email
-  const resendVerificationEmail = async () => {
-    try {
-      if (!user) {
-        toast.error('No user logged in');
-        return;
-      }
-
-      if (user.emailVerified) {
-        toast.success('Your email is already verified!');
-        return;
-      }
-
-      await sendEmailVerification(user);
-      toast.success('Verification email sent! Check your inbox.');
-    } catch (error: any) {
-      console.error('Resend verification error:', error);
-      
-      if (error.code === 'auth/too-many-requests') {
-        toast.error('Too many requests. Please wait a few minutes before trying again.');
-      } else {
-        toast.error('Failed to send verification email');
       }
       throw error;
     }
@@ -204,7 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signup,
     login,
     logout,
-    resendVerificationEmail,
     deleteAccount,
   };
   

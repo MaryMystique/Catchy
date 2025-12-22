@@ -86,6 +86,7 @@ const page = () => {
                 description: formData.description,
                 color: formData.color,
                 dueDate: formData.dueDate || "No due date",
+                
             });
 
             toast.success("Project created successfully!");

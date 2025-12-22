@@ -6,7 +6,6 @@ import Footer from "@/components/Footer";
 import ToastProvider from "@/components/ToastProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DarkModeProvider } from "@/contexts/DarkModeContext";
-import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -30,7 +29,6 @@ export default function RootLayout({
           <DarkModeProvider>
           <AuthProvider>
           <Navbar />
-          <EmailVerificationBanner />
         {children}
         <ToastProvider />
         <Footer />
