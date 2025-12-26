@@ -4,7 +4,7 @@ import Link from 'next/link'
 export default function Footer()  {
   return (
     <footer className='bg-white border-t border-gray-200 py-12'>
-     <div className='max-w-7xl mx-autopx-4 sm:px-6 lg:px-8'>
+     <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         {/* Footer Content */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-8 mb-8'>
             {/* Brand Section */}
@@ -52,6 +52,11 @@ export default function Footer()  {
                     <li>
                         <Link href="/privacy" className='text-gray-600 hover:text-blue-600 transition'>
                         Privacy Policy
+                        </Link>
+                    </li>
+                    <li>
+                        <Link href="/terms" className='text-gray-600 hover:text-blue-600 transition'>
+                        Terms of Service
                         </Link>
                     </li>
                 </ul>
